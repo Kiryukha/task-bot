@@ -1,9 +1,9 @@
 import aiosqlite
 import asyncio
 import datetime
+from typing import List, Dict, Any
 
 
-#TODO: Create DB
 class TaskDB:
     def __init__(self, db_path : str = "tasts.db"):
         self.db_path = db_path
@@ -35,5 +35,6 @@ class TaskDB:
             return cursor.lastrowid or 0
             # Check if 0 -> fail to add
     
-
-        
+    async def get_user_tasks(self, user_id: int):
+        pass
+        #return list of user[user_id] tasks
