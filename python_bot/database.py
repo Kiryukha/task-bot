@@ -1,5 +1,6 @@
 import aiosqlite
 import datetime
+from typing import List, Dict, Any
 
 
 class TaskDB:
@@ -34,7 +35,7 @@ class TaskDB:
             return int(row[0]) if row is not None else 0
             # Check if 0 -> fail to add
     
-    async def get_user_tasks(self, user_id: int):
+    async def get_user_tasks(self, user_id: int) -> List[Dict[str, Any]]:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
@@ -68,3 +69,19 @@ class TaskDB:
             )
             row = await cursor.fetchone()
             return row is not None and row["status"] == status
+        
+    async def delete_task(self, task_id: int, user_id: int) -> bool:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "DELETE FROM tasks WHERE id = ? AND user_id = ?",
+                (task_id, user_id)
+            )
+            await db.commit()
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT id FROM tasks WHERE id = ? AND user_id = ?",
+                (task_id, user_id)
+            )
+            row = await cursor.fetchone()
+            return row is None
+
