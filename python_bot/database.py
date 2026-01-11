@@ -1,11 +1,9 @@
 import aiosqlite
-import asyncio
 import datetime
-from typing import List, Dict, Any
 
 
 class TaskDB:
-    def __init__(self, db_path : str = "tasts.db"):
+    def __init__(self, db_path : str = "tasks.db"):
         self.db_path = db_path
 
     async def init_db(self):
@@ -32,9 +30,41 @@ class TaskDB:
             )
             await db.commit()
             cursor = await db.execute("SELECT last_insert_rowid()")
-            return cursor.lastrowid or 0
+            row = await cursor.fetchone()
+            return int(row[0]) if row is not None else 0
             # Check if 0 -> fail to add
     
     async def get_user_tasks(self, user_id: int):
-        pass
-        #return list of user[user_id] tasks
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT id, text, priority, deadline, status, created_at
+                FROM tasks
+                WHERE user_id = ?
+                ORDER BY status ASC, priority DESC, deadline ASC
+                """,
+                (user_id,)
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+    
+    async def update_task_status(self, task_id: int, user_id: int, status: str) -> bool:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                UPDATE tasks
+                SET status = ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (status, task_id, user_id)
+            )
+            await db.commit()
+
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT status FROM tasks WHERE id = ? AND user_id = ?",
+                (task_id, user_id)
+            )
+            row = await cursor.fetchone()
+            return row is not None and row["status"] == status
